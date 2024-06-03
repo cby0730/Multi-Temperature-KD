@@ -24,7 +24,7 @@ CFG.EXPERIMENT.TAG = "default"
 
 #Multi-temperature
 CFG.MT = CN()
-CFG.MT.MAX_TEMPERATURES = [4, 3, 2, 1]
+CFG.MT.MAX_TEMPERATURES = 4
 
 # Dataset
 CFG.DATASET = CN()

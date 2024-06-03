@@ -158,7 +158,7 @@ class DKD(Distiller):
         self.t = t
         self.er = er
         self.mt = mt
-        self.temperatures = cfg.MT.TEMPERATURES
+        self.temperatures = nn.Parameter(torch.rand(cfg.MT.MAX_TEMPERATURES, requires_grad=True))
         self.warmup = cfg.DKD.WARMUP
 
     def forward_train(self, image, target, **kwargs):
