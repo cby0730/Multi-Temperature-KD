@@ -3,80 +3,50 @@
 ################################
 
 ############ CIFAR100 ############
-# DKD
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_res8x4.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_shuv2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res50_mv2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_mv2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_vgg8.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_16_2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_40_1.yaml 
+# KD
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_res8x4.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_shuv2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res50_mv2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_mv2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_vgg8.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_16_2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_40_1.yaml 
 
 # DKD
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_res8x4.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_res8x4.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_shuv2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res50_mv2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_mv2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_vgg8.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_16_2.yaml 
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_40_1.yaml 
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_shuv2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res50_mv2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_mv2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_vgg8.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_16_2.yaml 
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_40_1.yaml 
-
-# ER-DKD
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_res8x4.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_shuv2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res50_mv2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_mv2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_vgg8.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_16_2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_40_1.yaml --er
+# ER-KD
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_res8x4.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_shuv2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res50_mv2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_mv2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_vgg8.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_16_2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_40_1.yaml --er
 
 # ER-DKD
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_res8x4.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_res8x4.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_shuv2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res50_mv2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_mv2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_vgg8.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_16_2.yaml --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_40_1.yaml --er
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_shuv2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res50_mv2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_mv2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/vgg13_vgg8.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_16_2.yaml --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/wrn40_2_wrn_40_1.yaml --er
-
-# MT-ER-DKD
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_res8x4.yaml --mt --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_shuv2.yaml --mt --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res50_mv2.yaml --mt --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_mv2.yaml --mt --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_vgg8.yaml --mt --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_16_2.yaml --mt --er
-
-pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_40_1.yaml --mt --er
+# MT-ER-KD
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_res8x4.yaml --mt --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_shuv2.yaml --mt --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res50_mv2.yaml --mt --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_mv2.yaml --mt --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/vgg13_vgg8.yaml --mt --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_16_2.yaml --mt --er
+# pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_40_1.yaml --mt --er
 
 # MT-ER-DKD
 pipenv run python3 tools/train.py --cfg configs/cifar100/dkd/res32x4_res8x4.yaml --mt --er

@@ -60,7 +60,7 @@ class KD(Distiller):
         self.t = t
         self.er = er
         self.mt = mt
-        self.temperatures = nn.Parameter(torch.rand(cfg.MT.MAX_TEMPERATURES, requires_grad=True))
+        self.temperatures = nn.Parameter(torch.rand(cfg.MT.MAX_TEMPERATURES, requires_grad=True)*9 + 1)
         self.ce_loss_weight = cfg.KD.LOSS.CE_WEIGHT
         self.kd_loss_weight = cfg.KD.LOSS.KD_WEIGHT
         self.tea_name = cfg.DISTILLER.TEACHER
