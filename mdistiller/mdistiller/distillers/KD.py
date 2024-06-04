@@ -27,12 +27,12 @@ def mt_kd_loss(logits_student, logits_teacher, temperatures):
 def er_kd_loss(logits_student, logits_teacher, temperature, t=4):
     p_s = F.softmax(logits_student / temperature, dim=1)
     p_t = F.softmax(logits_teacher / temperature, dim=1)
-    loss = F.kl_div(p_s.log(), p_t, reduction="none")
+    loss = F.kl_div(p_s.log(), p_t, reduction="none") * temperature**2 
 
     _p_t = F.softmax(logits_teacher / t, dim=1)
     entropy = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
 
-    loss = (loss * entropy.unsqueeze(1)).sum(1).mean() * temperature**2 
+    loss = (loss * entropy.unsqueeze(1)).sum(1).mean()
     return loss
 
 def mt_er_kd_loss(logits_student, logits_teacher, temperatures, t=4):
@@ -60,7 +60,7 @@ class KD(Distiller):
         self.t = t
         self.er = er
         self.mt = mt
-        initial_temperatures = torch.tensor([4.0, 3.0, 2.0, 1.0], requires_grad=True)
+        initial_temperatures = torch.tensor([6.0, 5.0, 4.0, 3.0, 2.0, 1.0], requires_grad=True)
         self.temperatures = nn.Parameter(initial_temperatures)
         self.ce_loss_weight = cfg.KD.LOSS.CE_WEIGHT
         self.kd_loss_weight = cfg.KD.LOSS.KD_WEIGHT

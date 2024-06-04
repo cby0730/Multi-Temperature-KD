@@ -158,7 +158,7 @@ class DKD(Distiller):
         self.t = t
         self.er = er
         self.mt = mt
-        initial_temperatures = torch.tensor([4.0, 3.0, 2.0, 1.0], requires_grad=True)
+        initial_temperatures = torch.tensor([6.0, 5.0, 4.0, 3.0, 2.0, 1.0], requires_grad=True)
         self.temperatures = nn.Parameter(initial_temperatures)
         self.warmup = cfg.DKD.WARMUP
 
