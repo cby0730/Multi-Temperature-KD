@@ -22,10 +22,6 @@ CFG.EXPERIMENT.PROJECT = "distill"
 CFG.EXPERIMENT.NAME = ""
 CFG.EXPERIMENT.TAG = "default"
 
-#Multi-temperature
-CFG.MT = CN()
-CFG.MT.MAX_TEMPERATURES = 6
-
 # Dataset
 CFG.DATASET = CN()
 CFG.DATASET.TYPE = "cifar100"
