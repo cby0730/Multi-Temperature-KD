@@ -27,12 +27,12 @@ def mt_kd_loss(logits_student, logits_teacher, temperatures):
 def er_kd_loss(logits_student, logits_teacher, temperature, t=4):
     p_s = F.softmax(logits_student / temperature, dim=1)
     p_t = F.softmax(logits_teacher / temperature, dim=1)
-    loss = F.kl_div(p_s.log(), p_t, reduction="none") * temperature**2 
+    loss = F.kl_div(p_s.log(), p_t, reduction="none")  
 
     _p_t = F.softmax(logits_teacher / t, dim=1)
     entropy = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
 
-    loss = (loss * entropy.unsqueeze(1)).sum(1).mean()
+    loss = (loss * entropy.unsqueeze(1)).sum(1).mean() * temperature**2
     return loss
 
 def mt_er_kd_loss(logits_student, logits_teacher, temperatures, t=4):
@@ -40,12 +40,12 @@ def mt_er_kd_loss(logits_student, logits_teacher, temperatures, t=4):
     for temperature in temperatures: 
         p_s = F.softmax(logits_student / temperature, dim=1)
         p_t = F.softmax(logits_teacher / temperature, dim=1)
-        loss = F.kl_div(p_s.log(), p_t, reduction="none")* temperature**2
+        loss = F.kl_div(p_s.log(), p_t, reduction="none")
 
         _p_t = F.softmax(logits_teacher / t, dim=1)
         entropy = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
 
-        loss = (loss * entropy.unsqueeze(1)).sum(1).mean() 
+        loss = (loss * entropy.unsqueeze(1)).sum(1).mean() * temperature**2
         all_loss.append(loss)
 
     return torch.stack(all_loss).mean()
