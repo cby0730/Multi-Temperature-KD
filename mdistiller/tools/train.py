@@ -26,6 +26,8 @@ def main(cfg, resume, opts, args):
             experiment_name = cfg.EXPERIMENT.TAG
         if args.mt == 1:
             experiment_name = 'mt,' + experiment_name
+        if args.dt == 1:
+            experiment_name = 'dt,' + experiment_name
         if args.t != 4:
             experiment_name += ',t=' + str(args.t)
 
@@ -124,6 +126,10 @@ def main(cfg, resume, opts, args):
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
                 model_student, model_teacher, cfg, args.t, args.er
             )
+        elif cfg.DISTILLER.TYPE == "MTKD":
+            distiller = distiller_dict[cfg.DISTILLER.TYPE](
+                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt
+            )
         elif cfg.DISTILLER.TYPE in ["KD", "DKD"]:
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
                 model_student, model_teacher, cfg, args.t, args.er, args.mt
@@ -160,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument("--t", type=float, default=4, help="T for ER-KD")
     parser.add_argument("--mt", action="store_true", help="Enable Multi-Temperature")
     parser.add_argument("--er", action="store_true", help="Enable Entropy Reweighted")
+    parser.add_argument("--dt", action="store_true", help="Enable Dynamic Temperature")
     parser.add_argument("opts", nargs=argparse.REMAINDER, help="Additional options")
 
     args = parser.parse_args()
