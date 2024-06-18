@@ -6,3 +6,4 @@ download_ckpts
 mdistiller/mdistiller.egg-info
 mdistiller/output
 Pipfile.lock
+.nfs*

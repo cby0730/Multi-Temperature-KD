@@ -51,8 +51,34 @@ def dtkd_loss(logits_student, logits_teacher, dtkd_loss_weight: float, referance
 
     return dtkd_loss_weight * dtkd_loss_value
 
+def contrastive_loss(logits_student, logits_teacher, target, temperature):
+    student_softmax = F.softmax(logits_student / temperature, dim=1)
+    teacher_softmax = F.softmax(logits_teacher / temperature, dim=1)
 
-def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, temperature, multi_temperaturs: list, t, er, mt, dt, use_kd_loss=False):
+    # 第一個損失函數: 讓學生模型的正樣本遠離教師模型的負樣本
+    student_pos_teacher_neg = (
+        -F.kl_div(student_softmax, 1 - teacher_softmax, reduction='none')
+        * temperature ** 2
+        / target.shape[0]
+    )
+
+    # 第二個損失函數: 讓學生模型的負樣本遠離教師模型的正樣本
+    student_neg_teacher_pos = (
+        -F.kl_div(1 - student_softmax, teacher_softmax, reduction='none')
+        * temperature ** 2
+        / target.shape[0]
+    )
+
+    student_neg_teacher_neg = (
+        F.kl_div(1 - student_softmax, 1 - teacher_softmax, reduction='none')
+        * temperature ** 2
+        / target.shape[0]
+    )
+
+    return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
+
+
+def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, temperature, multi_temperaturs: list, t, er, mt, dt, ct, use_kd_loss=False):
     temperatures = multi_temperaturs if mt else [temperature]
     loss_list = []
     for temperature in temperatures:
@@ -62,13 +88,14 @@ def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, t
             loss_value = dkd_loss(logits_student, logits_teacher, target, loss_weight_dict["tckd"], loss_weight_dict["nckd"], temperature)
         
         dtkd_loss_value = dtkd_loss(logits_student, logits_teacher, loss_weight_dict["dtkd"], temperature) if dt else 0
+        ct_loss_value = contrastive_loss(logits_student, logits_teacher, target, temperature) if ct else 0
 
         if er:
             _p_t = F.softmax(logits_teacher / t, dim=1)
             entropy = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
-            loss_list.append((loss_value * entropy.unsqueeze(1) + dtkd_loss_value).mean())
+            loss_list.append((loss_value * entropy.unsqueeze(1) + dtkd_loss_value + ct_loss_value).mean())
         else:
-            loss_list.append(loss_value + dtkd_loss_value)
+            loss_list.append(loss_value + dtkd_loss_value + ct_loss_value)
 
     return torch.stack(loss_list).mean()
     
@@ -94,7 +121,7 @@ def cat_mask(t, mask1, mask2):
 
 class MTKD(Distiller):
 
-    def __init__(self, student, teacher, cfg, t, er, mt, dt):
+    def __init__(self, student, teacher, cfg, t, er, mt, dt, ct):
         super(MTKD, self).__init__(student, teacher)
         self.loss_weight_dict = {
             "ce": cfg.MTKD.LOSS.CE_WEIGHT,
@@ -108,6 +135,7 @@ class MTKD(Distiller):
         self.er = er
         self.mt = mt
         self.dt = dt
+        self.ct = ct
         self.use_kd_loss = cfg.MTKD.BASE.upper() == "KD"
         self.temperatures = nn.Parameter(torch.tensor(cfg.MTKD.INIT_TEMPERATURE, requires_grad=True))
         self.warmup = cfg.MTKD.WARMUP
@@ -131,6 +159,7 @@ class MTKD(Distiller):
             self.er,
             self.mt,
             self.dt,
+            self.ct,
             self.use_kd_loss
         )
 

@@ -9,7 +9,7 @@ cudnn.benchmark = True
 from mdistiller.models import cifar_model_dict, imagenet_model_dict, tinyimagenet200_model_dict
 from mdistiller.distillers import distiller_dict
 from mdistiller.dataset import get_dataset
-from mdistiller.engine.utils import load_checkpoint, log_msg
+from mdistiller.engine.utils import load_checkpoint, log_msg, seed_everything
 from mdistiller.engine.cfg import CFG as cfg
 from mdistiller.engine.cfg import show_cfg
 from mdistiller.engine import trainer_dict
@@ -17,8 +17,8 @@ from mdistiller.engine import trainer_dict
 from timm.models import create_model
 
 def main(cfg, resume, opts, args):
+    seed_everything()
     experiment_name = cfg.EXPERIMENT.NAME
-
     if experiment_name == "":
         if args.er == 1:
             experiment_name = 'entropy,' + cfg.EXPERIMENT.TAG
@@ -28,6 +28,8 @@ def main(cfg, resume, opts, args):
             experiment_name = 'mt,' + experiment_name
         if args.dt == 1:
             experiment_name = 'dt,' + experiment_name
+        if args.ct == 1:
+            experiment_name = 'ct,' + experiment_name
         if args.t != 4:
             experiment_name += ',t=' + str(args.t)
 
@@ -128,7 +130,7 @@ def main(cfg, resume, opts, args):
             )
         elif cfg.DISTILLER.TYPE == "MTKD":
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
-                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt
+                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt, args.ct
             )
         elif cfg.DISTILLER.TYPE in ["KD", "DKD"]:
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
@@ -167,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--mt", action="store_true", help="Enable Multi-Temperature")
     parser.add_argument("--er", action="store_true", help="Enable Entropy Reweighted")
     parser.add_argument("--dt", action="store_true", help="Enable Dynamic Temperature")
+    parser.add_argument("--ct", action="store_true", help="Enable Contrastive KD")
     parser.add_argument("opts", nargs=argparse.REMAINDER, help="Additional options")
 
     args = parser.parse_args()
