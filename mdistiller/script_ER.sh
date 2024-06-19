@@ -60,19 +60,19 @@
 # pipenv run python3 tools/train.py --cfg configs/cifar100/kd/wrn40_2_wrn_40_1.yaml --mt --er
 
 # MT-ER-DKD
-pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/res32x4_res8x4.yaml --mt --er --dt --ct
+pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/dkd/res32x4_res8x4.yaml --mt --er --dt --ct
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/res32x4_shuv2.yaml --mt --er --dt --ct
+pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/dkd/res32x4_shuv2.yaml --mt --er --dt --ct
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/res50_mv2.yaml --mt --er --dt --ct 
+pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/dkd/res50_mv2.yaml --mt --er --dt --ct 
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/vgg13_mv2.yaml --mt --er --dt --ct
+pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/dkd/vgg13_mv2.yaml --mt --er --dt --ct
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/vgg13_vgg8.yaml --mt --er --dt --ct
+pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/dkd/vgg13_vgg8.yaml --mt --er --dt --ct
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/wrn40_2_wrn_16_2.yaml --mt --er --dt --ct
+pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/dkd/wrn40_2_wrn_16_2.yaml --mt --er --dt --ct
 
-pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/wrn40_2_wrn_40_1.yaml --mt --er --dt --ct
+pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/dkd/wrn40_2_wrn_40_1.yaml --mt --er --dt --ct
 
 ############ CIFAR100 ############
 # ER-KD

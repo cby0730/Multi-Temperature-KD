@@ -7,3 +7,4 @@ mdistiller/mdistiller.egg-info
 mdistiller/output
 Pipfile.lock
 .nfs*
+output/

@@ -1,11 +1,11 @@
 EXPERIMENT:
-  NAME: "" 
-  TAG: "dkd,res32x4,res8x4"
+  NAME: ""
+  TAG: "dkd,vgg13,vgg8"
   PROJECT: "cifar100_baselines"
 DISTILLER:
   TYPE: "MTKD"
-  TEACHER: "resnet32x4"
-  STUDENT: "resnet8x4"
+  TEACHER: "vgg13"
+  STUDENT: "vgg8"
 SOLVER:
   BATCH_SIZE: 64
   EPOCHS: 240
@@ -16,5 +16,6 @@ SOLVER:
   MOMENTUM: 0.9
   TYPE: "SGD"
 MTKD:
+  BASE: "KD"
   LOSS:
-    NCKD_WEIGHT: 3.0
+    NCKD_WEIGHT: 2.0
