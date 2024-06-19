@@ -1,11 +1,11 @@
 EXPERIMENT:
   NAME: ""
-  TAG: "dkd,wrn_40_2,wrn_16_2"
+  TAG: "dkd,wrn_40_2,wrn_40_1"
   PROJECT: "cifar100_baselines"
 DISTILLER:
   TYPE: "MTKD"
   TEACHER: "wrn_40_2"
-  STUDENT: "wrn_16_2"
+  STUDENT: "wrn_40_1"
 SOLVER:
   BATCH_SIZE: 64
   EPOCHS: 240
@@ -16,6 +16,5 @@ SOLVER:
   MOMENTUM: 0.9
   TYPE: "SGD"
 MTKD:
-  BASE: "KD"
   LOSS:
     NCKD_WEIGHT: 2.0

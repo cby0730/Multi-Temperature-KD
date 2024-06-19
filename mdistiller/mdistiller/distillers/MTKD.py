@@ -55,21 +55,20 @@ def contrastive_loss(logits_student, logits_teacher, target, temperature):
     student_softmax = F.softmax(logits_student / temperature, dim=1)
     teacher_softmax = F.softmax(logits_teacher / temperature, dim=1)
 
-    # positive student and negative teacher
-    pos_neg_similarity = torch.mm(student_softmax, (1 - teacher_softmax).transpose(1, 0))
-    student_pos_teacher_neg = torch.mean(torch.diag(pos_neg_similarity))
+    # 第一個損失函數: 讓學生模型的正樣本遠離教師模型的負樣本
+    student_pos_teacher_neg = (
+        -F.kl_div(student_softmax, 1 - teacher_softmax, reduction='none')
+        * temperature ** 2
+        / target.shape[0]
+    )
 
-    # negative student and positive teacher 
-    # 當(1 - student_softmax) 和 teacher_softmax越接近，表示學生錯了，或是這一題很難，這時侯相似度就會很大，loss就會比較大
-    # 例如，學生很有自信0.9->0.1，老師認為這題比較難，應該信心度要低一點0.6，這時候相似度就會比較大，loss就會比較大
-    # 反之，學生跟老師一樣自信，學生0.9->0.1，老師0.9，這時候相似度很低，loss就會變小
-    # 如果，學生跟老師一樣沒自信，學生0.6->0.4，老師0.6，這時候相似度會比較高，表示這樣本比較難，loss就會比較大
+    # negative student and positive teacher
     neg_pos_similarity = torch.mm((1 - student_softmax), teacher_softmax.transpose(1, 0))
     student_neg_teacher_pos = torch.mean(torch.diag(neg_pos_similarity))
 
     # negative student and negative teacher
     neg_neg_similarity = torch.mm((1 - student_softmax), (1 - teacher_softmax).transpose(1, 0))
-    student_neg_teacher_neg = torch.mean(1-torch.diag(neg_neg_similarity))
+    student_neg_teacher_neg = torch.mean(1 - torch.diag(neg_neg_similarity))
 
     return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
 
@@ -112,7 +111,7 @@ def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, t
             entropy = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
             loss_list.append((loss_value * entropy.unsqueeze(1) + dtkd_loss_value + ct_loss_value).mean())
         else:
-            loss_list.append((loss_value + dtkd_loss_value + ct_loss_value).mean())
+            loss_list.append(loss_value + dtkd_loss_value + ct_loss_value)
 
     return torch.stack(loss_list).mean()
     
