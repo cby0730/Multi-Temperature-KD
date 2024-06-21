@@ -62,13 +62,19 @@ def contrastive_loss(logits_student, logits_teacher, target, temperature):
         / target.shape[0]
     )
 
-    # negative student and positive teacher
-    neg_pos_similarity = torch.mm((1 - student_softmax), teacher_softmax.transpose(1, 0))
-    student_neg_teacher_pos = torch.mean(torch.diag(neg_pos_similarity))
+    # 第二個損失函數: 讓學生模型的負樣本遠離教師模型的正樣本
+    student_neg_teacher_pos = (
+        -F.kl_div(1 - student_softmax, teacher_softmax, reduction='none')
+        * temperature ** 2
+        / target.shape[0]
+    )
 
-    # negative student and negative teacher
-    neg_neg_similarity = torch.mm((1 - student_softmax), (1 - teacher_softmax).transpose(1, 0))
-    student_neg_teacher_neg = torch.mean(1 - torch.diag(neg_neg_similarity))
+    # 第三個損失函數: 讓學生模型的負樣本遠離教師模型的負樣本
+    student_neg_teacher_neg = (
+        -F.kl_div(1 - student_softmax, 1 - teacher_softmax, reduction='none')
+        * temperature ** 2
+        / target.shape[0]
+    )
 
     return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
 
