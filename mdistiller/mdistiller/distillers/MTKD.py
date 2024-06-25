@@ -4,13 +4,24 @@ import torch.nn.functional as F
 
 from ._base import Distiller
 
-def kd_loss(logits_student, logits_teacher, kd_loss_weight, temperature):
+def normalize(logit):
+    mean = logit.mean(dim=-1, keepdims=True)
+    stdv = logit.std(dim=-1, keepdims=True)
+    return (logit - mean) / (1e-7 + stdv)
+
+def kd_loss(logits_student_in, logits_teacher_in, kd_loss_weight, temperature, logit_stand=True):
+    logits_student = normalize(logits_student_in) if logit_stand else logits_student_in
+    logits_teacher = normalize(logits_teacher_in) if logit_stand else logits_teacher_in
+
     p_s = F.softmax(logits_student / temperature, dim=1)
     p_t = F.softmax(logits_teacher / temperature, dim=1)
     loss = F.kl_div(p_s.log(), p_t, reduction="none").sum(1).mean() * temperature**2
     return kd_loss_weight * loss
 
-def dkd_loss(logits_student, logits_teacher, target, tckd_loss_weight: float, nckd_loss_weight: float, temperature):
+def dkd_loss(logits_student_in, logits_teacher_in, target, tckd_loss_weight: float, nckd_loss_weight: float, temperature, logit_stand=True):
+    logits_student = normalize(logits_student_in) if logit_stand else logits_student_in
+    logits_teacher = normalize(logits_teacher_in) if logit_stand else logits_teacher_in
+
     gt_mask = _get_gt_mask(logits_student, target)
     other_mask = _get_other_mask(logits_student, target)
     pred_student = F.softmax(logits_student / temperature, dim=1)
@@ -55,26 +66,55 @@ def contrastive_loss(logits_student, logits_teacher, target, temperature):
     student_softmax = F.softmax(logits_student / temperature, dim=1)
     teacher_softmax = F.softmax(logits_teacher / temperature, dim=1)
 
-    # 第一個損失函數: 讓學生模型的正樣本遠離教師模型的負樣本
     student_pos_teacher_neg = (
         -F.kl_div(student_softmax, 1 - teacher_softmax, reduction='none')
         * temperature ** 2
         / target.shape[0]
     )
 
-    # 第二個損失函數: 讓學生模型的負樣本遠離教師模型的正樣本
     student_neg_teacher_pos = (
         -F.kl_div(1 - student_softmax, teacher_softmax, reduction='none')
         * temperature ** 2
         / target.shape[0]
     )
 
-    # 第三個損失函數: 讓學生模型的負樣本遠離教師模型的負樣本
     student_neg_teacher_neg = (
-        -F.kl_div(1 - student_softmax, 1 - teacher_softmax, reduction='none')
+        F.kl_div(1 - student_softmax, 1 - teacher_softmax, reduction='none')
         * temperature ** 2
         / target.shape[0]
     )
+
+    return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
+
+def cc_contrastive_loss(logits_student, logits_teacher, temperature):
+    batch_size, class_num = logits_teacher.shape
+    student_softmax = F.softmax(logits_student / temperature, dim=1)
+    teacher_softmax = F.softmax(logits_teacher / temperature, dim=1)
+
+    student_matrix_pos = torch.mm(student_softmax.transpose(1, 0), student_softmax)
+    teacher_matrix_pos = torch.mm(teacher_softmax.transpose(1, 0), teacher_softmax)
+    student_matrix_neg = 1 - torch.mm(student_softmax.transpose(1, 0), student_softmax)
+    teacher_matrix_neg = 1 - torch.mm(teacher_softmax.transpose(1, 0), teacher_softmax)
+
+    student_pos_teacher_neg = ((1 - (teacher_matrix_neg - student_matrix_pos)) ** 2).sum() / class_num
+    student_neg_teacher_pos = ((1 - (student_matrix_neg - teacher_matrix_pos)) ** 2).sum() / class_num
+    student_neg_teacher_neg = (((student_matrix_neg - teacher_matrix_neg)) ** 2).sum() / class_num
+
+    return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
+
+def bb_contrastive_loss(logits_student, logits_teacher, temperature):
+    batch_size, class_num = logits_teacher.shape
+    student_softmax = F.softmax(logits_student / temperature, dim=1)
+    teacher_softmax = F.softmax(logits_teacher / temperature, dim=1)
+
+    student_matrix_pos = torch.mm(student_softmax, student_softmax.transpose(1, 0))
+    teacher_matrix_pos = torch.mm(teacher_softmax, teacher_softmax.transpose(1, 0))
+    student_matrix_neg = 1 - torch.mm(student_softmax, student_softmax.transpose(1, 0))
+    teacher_matrix_neg = 1 - torch.mm(teacher_softmax, teacher_softmax.transpose(1, 0))
+
+    student_pos_teacher_neg = ((1 - (teacher_matrix_neg - student_matrix_pos)) ** 2).sum() / batch_size
+    student_neg_teacher_pos = ((1 - (student_matrix_neg - teacher_matrix_pos)) ** 2).sum() / batch_size
+    student_neg_teacher_neg = (((student_matrix_neg - teacher_matrix_neg)) ** 2).sum() / batch_size
 
     return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
 
@@ -100,24 +140,43 @@ def bc_loss(logits_student, logits_teacher, temperature):
     return consistency_loss
 
 
-def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, temperature, multi_temperaturs: list, t, er, mt, dt, ct, use_kd_loss=False):
+def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, temperature, multi_temperaturs: list, t, er, mt, dt, ct, bc, std, use_kd_loss=False):
     temperatures = multi_temperaturs if mt else [temperature]
     loss_list = []
+    # for multi temperature
     for temperature in temperatures:
         if use_kd_loss:
-            loss_value = kd_loss(logits_student, logits_teacher, loss_weight_dict["kd"], temperature)
+            loss_value = kd_loss(logits_student, logits_teacher, loss_weight_dict["kd"], temperature, std)
         else:
-            loss_value = dkd_loss(logits_student, logits_teacher, target, loss_weight_dict["tckd"], loss_weight_dict["nckd"], temperature)
+            loss_value = dkd_loss(logits_student, logits_teacher, target, loss_weight_dict["tckd"], loss_weight_dict["nckd"], temperature, std)
         
-        dtkd_loss_value = dtkd_loss(logits_student, logits_teacher, loss_weight_dict["dtkd"], temperature) if dt else 0
-        ct_loss_value = contrastive_loss(logits_student, logits_teacher, target, temperature) if ct else 0
+        # for dynamic temperature loss function
+        if dt:
+            dtkd_loss_value = dtkd_loss(logits_student, logits_teacher, loss_weight_dict["dtkd"], temperature)
+        else:
+            dtkd_loss_value = 0
+        
+        # for contrastive loss function
+        if ct:
+            ct_loss_value = contrastive_loss(logits_student, logits_teacher, target, temperature)
+        else:
+            ct_loss_value = 0
 
+        # for class contrastive and batch contrastive loss function
+        if bc:
+            cc_ct_loss_value = cc_contrastive_loss(logits_student, logits_teacher, temperature)
+            bb_ct_loss_value = bb_contrastive_loss(logits_student, logits_teacher, temperature)
+        else:
+            cc_ct_loss_value = 0
+            bb_ct_loss_value = 0
+
+        # for er loss function
         if er:
             _p_t = F.softmax(logits_teacher / t, dim=1)
             entropy = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
-            loss_list.append((loss_value * entropy.unsqueeze(1) + dtkd_loss_value + ct_loss_value).mean())
+            loss_list.append((loss_value * entropy.unsqueeze(1) + dtkd_loss_value + ct_loss_value + cc_ct_loss_value + bb_ct_loss_value).mean())
         else:
-            loss_list.append(loss_value + dtkd_loss_value + ct_loss_value)
+            loss_list.append(loss_value + dtkd_loss_value + ct_loss_value + cc_ct_loss_value + bb_ct_loss_value)
 
     return torch.stack(loss_list).mean()
     
@@ -143,7 +202,7 @@ def cat_mask(t, mask1, mask2):
 
 class MTKD(Distiller):
 
-    def __init__(self, student, teacher, cfg, t, er, mt, dt, ct):
+    def __init__(self, student, teacher, cfg, t, er, mt, dt, ct, bc, std):
         super(MTKD, self).__init__(student, teacher)
         self.loss_weight_dict = {
             "ce": cfg.MTKD.LOSS.CE_WEIGHT,
@@ -158,6 +217,8 @@ class MTKD(Distiller):
         self.mt = mt
         self.dt = dt
         self.ct = ct
+        self.bc = bc
+        self.std = std
         self.use_kd_loss = cfg.MTKD.BASE.upper() == "KD"
         self.temperatures = nn.Parameter(torch.tensor(cfg.MTKD.INIT_TEMPERATURE, requires_grad=True))
         self.warmup = cfg.MTKD.WARMUP
@@ -182,6 +243,8 @@ class MTKD(Distiller):
             self.mt,
             self.dt,
             self.ct,
+            self.bc,
+            self.std,
             self.use_kd_loss
         )
 

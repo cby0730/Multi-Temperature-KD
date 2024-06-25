@@ -30,6 +30,10 @@ def main(cfg, resume, opts, args):
             experiment_name = 'dt,' + experiment_name
         if args.ct == 1:
             experiment_name = 'ct,' + experiment_name
+        if args.bc == 1:
+            experiment_name = 'bc,' + experiment_name
+        if args.std == 1:
+            experiment_name = 'std,' + experiment_name
         if args.t != 4:
             experiment_name += ',t=' + str(args.t)
 
@@ -130,7 +134,7 @@ def main(cfg, resume, opts, args):
             )
         elif cfg.DISTILLER.TYPE == "MTKD":
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
-                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt, args.ct
+                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt, args.ct, args.bc, args.std
             )
         elif cfg.DISTILLER.TYPE in ["KD", "DKD"]:
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
@@ -170,6 +174,8 @@ if __name__ == "__main__":
     parser.add_argument("--er", action="store_true", help="Enable Entropy Reweighted")
     parser.add_argument("--dt", action="store_true", help="Enable Dynamic Temperature")
     parser.add_argument("--ct", action="store_true", help="Enable Contrastive KD")
+    parser.add_argument("--bc", action="store_true", help="Enable batch and class contrastive")
+    parser.add_argument("--std", action="store_true", help="Enable normalize")
     parser.add_argument("opts", nargs=argparse.REMAINDER, help="Additional options")
 
     args = parser.parse_args()

@@ -9,13 +9,14 @@ cudnn.benchmark = True
 from mdistiller.models import cifar_model_dict, imagenet_model_dict, tinyimagenet200_model_dict
 from mdistiller.distillers import distiller_dict
 from mdistiller.dataset import get_dataset_strong
-from mdistiller.engine.utils import load_checkpoint, log_msg
+from mdistiller.engine.utils import load_checkpoint, log_msg, seed_everything
 from mdistiller.engine.cfg import CFG as cfg
 from mdistiller.engine.cfg import show_cfg
 from mdistiller.engine import trainer_dict
 
 
 def main(cfg, resume, opts):
+    seed_everything()
     experiment_name = cfg.EXPERIMENT.NAME
     if experiment_name == "":
         experiment_name = "4"+cfg.EXPERIMENT.TAG
