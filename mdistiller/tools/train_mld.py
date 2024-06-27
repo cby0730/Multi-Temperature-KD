@@ -18,6 +18,8 @@ from mdistiller.engine import trainer_dict
 def main(cfg, resume, opts):
     seed_everything()
     experiment_name = cfg.EXPERIMENT.NAME
+    if args.er == 1:
+        experiment_name = 'entropy,' + cfg.EXPERIMENT.TAG
     if experiment_name == "":
         experiment_name = "4"+cfg.EXPERIMENT.TAG
     tags = cfg.EXPERIMENT.TAG.split(",")

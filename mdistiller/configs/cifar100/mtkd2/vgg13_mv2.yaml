@@ -1,10 +1,10 @@
 EXPERIMENT:
   NAME: ""
-  TAG: "dkd,res50,mv2"
+  TAG: "dkd,vgg13,mv2"
   PROJECT: "cifar100_exp"
 DISTILLER:
-  TYPE: "MTKD"
-  TEACHER: "ResNet50"
+  TYPE: "MTKD2"
+  TEACHER: "vgg13"
   STUDENT: "MobileNetV2"
 SOLVER:
   BATCH_SIZE: 64
@@ -15,6 +15,7 @@ SOLVER:
   WEIGHT_DECAY: 0.0005
   MOMENTUM: 0.9
   TYPE: "SGD"
+  TRAINER: "MLD"
 MTKD:
   LOSS:
-    NCKD_WEIGHT: 3.0
+    NCKD_WEIGHT: 2.0

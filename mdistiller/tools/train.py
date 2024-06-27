@@ -8,7 +8,7 @@ cudnn.benchmark = True
 
 from mdistiller.models import cifar_model_dict, imagenet_model_dict, tinyimagenet200_model_dict
 from mdistiller.distillers import distiller_dict
-from mdistiller.dataset import get_dataset
+from mdistiller.dataset import get_dataset, get_dataset_strong
 from mdistiller.engine.utils import load_checkpoint, log_msg, seed_everything
 from mdistiller.engine.cfg import CFG as cfg
 from mdistiller.engine.cfg import show_cfg
@@ -55,7 +55,10 @@ def main(cfg, resume, opts, args):
     # cfg & loggers
     show_cfg(cfg)
     # init dataloader & models
-    train_loader, val_loader, num_data, num_classes = get_dataset(cfg)
+    if cfg.DISTILLER.TYPE in ['MLD', 'MLD2', 'MTKD2']:
+        train_loader, val_loader, num_data, num_classes = get_dataset_strong(cfg)
+    else:
+        train_loader, val_loader, num_data, num_classes = get_dataset(cfg)
 
     # vanilla
     if cfg.DISTILLER.TYPE == "NONE":
@@ -124,6 +127,7 @@ def main(cfg, resume, opts, args):
             model_student = cifar_model_dict[cfg.DISTILLER.STUDENT][0](
                 num_classes=num_classes
             )
+
         if cfg.DISTILLER.TYPE == "CRD":
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
                 model_student, model_teacher, cfg, num_data
@@ -132,6 +136,14 @@ def main(cfg, resume, opts, args):
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
                 model_student, model_teacher, cfg, args.t, args.er
             )
+        elif cfg.DISTILLER.TYPE == "MLD2":
+            distiller = distiller_dict[cfg.DISTILLER.TYPE](
+                model_student, model_teacher, cfg, args.t, args.er, args.std
+        )
+        elif cfg.DISTILLER.TYPE == "MTKD2":
+            distiller = distiller_dict[cfg.DISTILLER.TYPE](
+                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt, args.ct, args.bc, args.std
+        )
         elif cfg.DISTILLER.TYPE == "MTKD":
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
                 model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt, args.ct, args.bc, args.std

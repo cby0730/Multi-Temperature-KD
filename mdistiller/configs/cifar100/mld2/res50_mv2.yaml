@@ -1,20 +1,19 @@
 EXPERIMENT:
   NAME: ""
-  TAG: "dkd,vgg13,vgg8"
-  PROJECT: "cifar100_exp"
+  TAG: "MLD,res50,mv2"
+  PROJECT: "cifar100_baselines"
 DISTILLER:
-  TYPE: "MTKD"
-  TEACHER: "vgg13"
-  STUDENT: "vgg8"
+  TYPE: "MLD2"
+  TEACHER: "ResNet50"
+  STUDENT: "MobileNetV2"
 SOLVER:
   BATCH_SIZE: 64
-  EPOCHS: 240
-  LR: 0.05
+  EPOCHS: 300
+  LR: 0.01
   LR_DECAY_STAGES: [150, 180, 210]
   LR_DECAY_RATE: 0.1
   WEIGHT_DECAY: 0.0005
   MOMENTUM: 0.9
   TYPE: "SGD"
-MTKD:
-  LOSS:
-    NCKD_WEIGHT: 2.0
+  TRAINER: "MLD"
+  

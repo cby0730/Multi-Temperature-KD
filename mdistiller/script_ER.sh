@@ -61,7 +61,6 @@
 
 # MT-ER-DKD
 pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/res32x4_res8x4.yaml --mt --er --dt --ct
-
 pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/res32x4_shuv2.yaml --mt --er --dt --ct
 
 pipenv run python3 tools/train.py --cfg configs/cifar100/mtkd/res50_mv2.yaml --mt --er --dt --ct 
