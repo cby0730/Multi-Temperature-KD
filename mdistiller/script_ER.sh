@@ -4,6 +4,21 @@
 
 ############ CIFAR100 ############
 
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/res32x4_res8x4.yaml --er --mt --bc --kl
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/res32x4_shuv2.yaml --er --mt --bc --kl
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/res50_mv2.yaml --er --mt --bc --kl
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/vgg13_mv2.yaml --er --mt --bc --kl
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/vgg13_vgg8.yaml --er --mt --bc --kl
+
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_16_2.yaml --er --mt
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_40_1.yaml --er --mt
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_16_2.yaml --er --mt --dt
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_40_1.yaml --er --mt --dt
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_16_2.yaml --er --mt --bc
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_40_1.yaml --er --mt --bc
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_16_2.yaml --er --mt --dt --std
+pipenv run python3 tools/train.py --cfg configs/cifar100/aivc04/mtkd/wrn40_2_wrn_40_1.yaml --er --mt --dt --std
+
 
 # KD
 # pipenv run python3 tools/train.py --cfg configs/cifar100/kd/res32x4_res8x4.yaml 

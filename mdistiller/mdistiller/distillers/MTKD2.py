@@ -4,60 +4,58 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ._base import Distiller
+from .loss import CrossEntropyLabelSmooth
 
 def normalize(logit):
     mean = logit.mean(dim=-1, keepdims=True)
     stdv = logit.std(dim=-1, keepdims=True)
     return (logit - mean) / (1e-7 + stdv)
 
+def gt_kd_loss(logits_student_weak, logits_student_strong, target, smoothing_value):
+    num_classes = logits_student_weak.size(-1)  
+    one_hot = F.one_hot(target, num_classes).float()
+    smoothed_target = one_hot * (1 - smoothing_value) + smoothing_value / num_classes
+    loss_kl = F.kl_div(
+        F.log_softmax(logits_student_weak, dim=1),
+        smoothed_target,
+        reduction='batchmean'
+    ) + F.kl_div(
+        F.log_softmax(logits_student_strong, dim=1),
+        smoothed_target,
+        reduction='batchmean'
+    )
+
+    return loss_kl
+
 def kd_loss(logits_student_in, logits_teacher_in, kd_loss_weight, temperature, logit_stand, dt):
     # std
     logits_student = normalize(logits_student_in) if logit_stand else logits_student_in
     logits_teacher = normalize(logits_teacher_in) if logit_stand else logits_teacher_in
 
-    # DTKD
+    # dynamic trmperature
+    _p_t = F.softmax(logits_teacher / temperature, dim=1)
+    entropy_teacher = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1).unsqueeze(1)
+    sigmoid_entropy_teacher = torch.sigmoid(entropy_teacher)
+    temperature_student = (1 + (1 - sigmoid_entropy_teacher)) * temperature if dt else temperature
+    temperature_teacher = (1 + (1 - sigmoid_entropy_teacher)) * temperature if dt else temperature
     
-    p_s = F.softmax(logits_student / temperature, dim=1)
-    p_t = F.softmax(logits_teacher / temperature, dim=1)
-    loss = F.kl_div(p_s.log(), p_t, reduction="none").sum(1).mean() * temperature * temperature
+    p_s = F.softmax(logits_student / temperature_student, dim=1)
+    p_t = F.softmax(logits_teacher / temperature_teacher, dim=1)
+    loss = F.kl_div(p_s.log(), p_t, reduction="none").sum(1).mean() * temperature_student * temperature_teacher
     return kd_loss_weight * loss
 
 def dkd_loss(logits_student_in, logits_teacher_in, target, tckd_loss_weight: float, nckd_loss_weight: float, temperature, logit_stand, dt):
     # std
     logits_student = normalize(logits_student_in) if logit_stand else logits_student_in
     logits_teacher = normalize(logits_teacher_in) if logit_stand else logits_teacher_in
-    '''
-    # DTKD
-    # teacher entropy
-    _p_t = F.softmax(logits_teacher / temperature, dim=1)
-    entropy_teacher = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
-    sigmoid_entropy_teacher = torch.sigmoid(entropy_teacher)
-    
-    # student entropy
-    _p_s = F.softmax(logits_student / temperature, dim=1)
-    entropy_student = -torch.sum(_p_s * torch.log(_p_s.clamp(min=1e-10)), dim=1)
-    sigmoid_entropy_student = torch.sigmoid(entropy_student)
 
-    temperature_teacher = (1 * (sigmoid_entropy_teacher/(sigmoid_entropy_student + sigmoid_entropy_teacher))) * temperature if dt else temperature
-    temperature_student = (1 * (sigmoid_entropy_student/(sigmoid_entropy_student + sigmoid_entropy_teacher))) * temperature if dt else temperature
-    temperature_teacher = temperature_teacher.unsqueeze(1)
-    temperature_student = temperature_student.unsqueeze(1)
-    print("temperature_teacher: ", temperature_teacher)
-    print("temperature_student: ", temperature_student)
-
-    # mtkd & mtkd2是單一動態溫度，mtkd3 & mtkd 4是兩個動態溫度
-    # 目前最強的是單一動態溫度
-
-    '''
-    # DTKD
-    # teacher temperature
+    # dynamic trmperature
     _p_t = F.softmax(logits_teacher / temperature, dim=1)
     entropy_teacher = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1).unsqueeze(1)
     sigmoid_entropy_teacher = torch.sigmoid(entropy_teacher)
-    temperature_student = (1 - (1 - sigmoid_entropy_teacher)) * temperature if dt else temperature
-    temperature_teacher = (1 - (1 - sigmoid_entropy_teacher)) * temperature if dt else temperature
+    temperature_student = (1 + (1 - sigmoid_entropy_teacher)) * temperature if dt else temperature
+    temperature_teacher = (1 + (1 - sigmoid_entropy_teacher)) * temperature if dt else temperature
     
-
     gt_mask = _get_gt_mask(logits_student, target)
     other_mask = _get_other_mask(logits_student, target)
     pred_student = F.softmax(logits_student / temperature_student, dim=1)
@@ -112,11 +110,12 @@ def cc_contrastive_loss(logits_student, logits_teacher, temperature):
     student_matrix_neg = 1 - torch.mm(student_softmax.transpose(1, 0), student_softmax)
     teacher_matrix_neg = 1 - torch.mm(teacher_softmax.transpose(1, 0), teacher_softmax)
 
+    student_pos_teacher_pos = ((teacher_matrix_pos - student_matrix_pos) ** 2).sum() / class_num
     student_pos_teacher_neg = ((1 - (teacher_matrix_neg - student_matrix_pos)) ** 2).sum() / class_num
     student_neg_teacher_pos = ((1 - (student_matrix_neg - teacher_matrix_pos)) ** 2).sum() / class_num
     student_neg_teacher_neg = (((student_matrix_neg - teacher_matrix_neg)) ** 2).sum() / class_num
 
-    return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
+    return student_pos_teacher_pos + student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
 
 def bb_contrastive_loss(logits_student, logits_teacher, temperature):
     batch_size, class_num = logits_teacher.shape
@@ -128,12 +127,37 @@ def bb_contrastive_loss(logits_student, logits_teacher, temperature):
     student_matrix_neg = 1 - torch.mm(student_softmax, student_softmax.transpose(1, 0))
     teacher_matrix_neg = 1 - torch.mm(teacher_softmax, teacher_softmax.transpose(1, 0))
 
+    student_pos_teacher_pos = ((teacher_matrix_pos - student_matrix_pos) ** 2).sum() / batch_size
     student_pos_teacher_neg = ((1 - (teacher_matrix_neg - student_matrix_pos)) ** 2).sum() / batch_size
     student_neg_teacher_pos = ((1 - (student_matrix_neg - teacher_matrix_pos)) ** 2).sum() / batch_size
     student_neg_teacher_neg = (((student_matrix_neg - teacher_matrix_neg)) ** 2).sum() / batch_size
 
-    return student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
+    return student_pos_teacher_pos + student_pos_teacher_neg + student_neg_teacher_pos + student_neg_teacher_neg
 
+def cc_loss(logits_student, logits_teacher, temperature, reduce=True):
+    batch_size, class_num = logits_teacher.shape
+    pred_student = F.softmax(logits_student / temperature, dim=1)
+    pred_teacher = F.softmax(logits_teacher / temperature, dim=1)
+    student_matrix = torch.mm(pred_student.transpose(1, 0), pred_student)
+    teacher_matrix = torch.mm(pred_teacher.transpose(1, 0), pred_teacher)
+    if reduce:
+        consistency_loss = ((teacher_matrix - student_matrix) ** 2).sum() / class_num
+    else:
+        consistency_loss = ((teacher_matrix - student_matrix) ** 2) / class_num
+    return consistency_loss
+
+
+def bc_loss(logits_student, logits_teacher, temperature, reduce=True):
+    batch_size, class_num = logits_teacher.shape
+    pred_student = F.softmax(logits_student / temperature, dim=1)
+    pred_teacher = F.softmax(logits_teacher / temperature, dim=1)
+    student_matrix = torch.mm(pred_student, pred_student.transpose(1, 0))
+    teacher_matrix = torch.mm(pred_teacher, pred_teacher.transpose(1, 0))
+    if reduce:
+        consistency_loss = ((teacher_matrix - student_matrix) ** 2).sum() / batch_size
+    else:
+        consistency_loss = ((teacher_matrix - student_matrix) ** 2) / batch_size
+    return consistency_loss
 
 def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, temperature, multi_temperaturs: list, t, er, mt, dt, ct, bc, std, use_kd_loss=False):
     temperatures = multi_temperaturs if mt else [temperature]
@@ -146,23 +170,26 @@ def mtkd_loss(logits_student, logits_teacher, target, loss_weight_dict: float, t
             loss_value = dkd_loss(logits_student, logits_teacher, target, loss_weight_dict["tckd"], loss_weight_dict["nckd"], temperature, std, dt)
         # for contrastive loss function
         if ct:
-            ct_loss_value = contrastive_loss(logits_student, logits_teacher, target, temperature)
+            bb_loss_value = bb_contrastive_loss(logits_student, logits_teacher, temperature)
+            cc_loss_value = cc_contrastive_loss(logits_student, logits_teacher, temperature)
         else:
-            ct_loss_value = 0
+            bb_loss_value = 0
+            cc_loss_value = 0
         # for class contrastive and batch contrastive loss function
         if bc:
-            cc_ct_loss_value = cc_contrastive_loss(logits_student, logits_teacher, temperature)
-            bb_ct_loss_value = bb_contrastive_loss(logits_student, logits_teacher, temperature)
+            bc_loss_value = bc_loss(logits_student, logits_teacher, temperature)
+            cc_loss_value = cc_loss(logits_student, logits_teacher, temperature)
         else:
-            cc_ct_loss_value = 0
-            bb_ct_loss_value = 0
+            cc_loss_value = 0
+            bc_loss_value = 0
+
         # for er loss function
         if er:
             _p_t = F.softmax(logits_teacher / temperature, dim=1)
             entropy = -torch.sum(_p_t * torch.log(_p_t.clamp(min=1e-10)), dim=1)
-            loss_list.append((loss_value * entropy.unsqueeze(1) + ct_loss_value + cc_ct_loss_value + bb_ct_loss_value).mean())
+            loss_list.append((loss_value * entropy.unsqueeze(1) + bb_loss_value + cc_loss_value + bc_loss_value + cc_loss_value).mean())
         else:
-            loss_list.append(loss_value + ct_loss_value + cc_ct_loss_value + bb_ct_loss_value)
+            loss_list.append(loss_value + bb_loss_value + cc_loss_value + bc_loss_value + cc_loss_value)
 
     return torch.stack(loss_list).mean()
     
@@ -188,7 +215,7 @@ def cat_mask(t, mask1, mask2):
 
 class MTKD2(Distiller):
 
-    def __init__(self, student, teacher, cfg, t, er, mt, dt, ct, bc, std):
+    def __init__(self, student, teacher, cfg, t, er, mt, dt, ct, bc, std, kl, ls):
         super(MTKD2, self).__init__(student, teacher)
         self.loss_weight_dict = {
             "ce": cfg.MTKD.LOSS.CE_WEIGHT,
@@ -198,16 +225,22 @@ class MTKD2(Distiller):
             "nckd": cfg.MTKD.LOSS.NCKD_WEIGHT,
         }
         self.temperature = cfg.MTKD.TEMPERATURE
+        self.label_smooths = nn.Parameter(torch.tensor(cfg.MTKD.LABELSMOOTH, dtype=torch.float32, requires_grad=True))
         self.t = t
         self.er = er
         self.mt = mt
         self.dt = dt
         self.ct = ct
-        self.bc = bc
-        self.std = std
+        self.bc = bc # batch and class consistency
+        self.std = std # logits standardization
+        self.kl = kl # treat gt as an another teacher
+        self.ls = ls # label smoothing for cross entropy
         self.use_kd_loss = cfg.MTKD.BASE.upper() == "KD"
-        self.temperatures = nn.Parameter(torch.tensor(cfg.MTKD.INIT_TEMPERATURE, requires_grad=True))
+        self.temperatures = nn.Parameter(torch.tensor(cfg.MTKD.INIT_TEMPERATURE, dtype=torch.float32, requires_grad=True))
         self.warmup = cfg.MTKD.WARMUP
+
+    def get_extra_parameters(self):
+        return [self.label_smooths, self.temperatures]
 
     def forward_train(self, image_weak, image_strong, target, **kwargs):
         logits_student_weak, _ = self.student(image_weak)
@@ -215,9 +248,22 @@ class MTKD2(Distiller):
         with torch.no_grad():
             logits_teacher_weak, _ = self.teacher(image_weak)
             logits_teacher_strong, _ = self.teacher(image_strong)
+            
+        # Label smoothing.
+        # ce losses
+        if self.ls:
+            cross_entropy = CrossEntropyLabelSmooth(num_classes=logits_student_weak.size(-1), epsilon=self.label_smooth)
+            loss_ce = self.loss_weight_dict["ce"] * (cross_entropy(logits_student_weak, target) + cross_entropy(logits_student_strong, target))
+        else:
+            loss_ce = self.loss_weight_dict["ce"] * (F.cross_entropy(logits_student_weak, target) + F.cross_entropy(logits_student_strong, target))
 
-        # losses
-        loss_ce = self.loss_weight_dict["ce"] * (F.cross_entropy(logits_student_weak, target) + F.cross_entropy(logits_student_strong, target))
+        # Treat gt as an another teacher.
+        if self.kl:
+            loss_kl_list = []
+            for label_smooth in self.label_smooths:
+                loss_kl_list.append(gt_kd_loss(logits_student_weak, logits_student_strong, target, label_smooth))
+            loss_kl = torch.stack(loss_kl_list).sum()
+
 
         loss_mtkd_weak = min(kwargs["epoch"] / self.warmup, 1.0) * mtkd_loss(
             logits_student_weak,
@@ -252,10 +298,16 @@ class MTKD2(Distiller):
             self.std,
             self.use_kd_loss
         )
-
-        losses_dict = {
-            "loss_ce": loss_ce,
-            "loss_kd": loss_mtkd_weak + loss_mtkd_strong,
-        }
+        
+        if self.kl:
+            losses_dict = {
+                "loss_ce": loss_ce,
+                "loss_kd": loss_mtkd_weak + loss_mtkd_strong + loss_kl,
+            }
+        else:
+            losses_dict = {
+                "loss_ce": loss_ce,
+                "loss_kd": loss_mtkd_weak + loss_mtkd_strong,
+            }
 
         return logits_student_weak, losses_dict

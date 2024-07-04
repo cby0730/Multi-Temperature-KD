@@ -15,7 +15,6 @@ from .ReviewKD import ReviewKD
 from .DKD import DKD
 from .DIST import DIST
 from .MTKD import MTKD
-from .MLD2 import MLD2
 from .MTKD2 import MTKD2
 
 distiller_dict = {
@@ -36,6 +35,5 @@ distiller_dict = {
     "DKD": DKD,
     "DIST": DIST,
     "MTKD": MTKD,
-    "MLD2": MLD2,
     "MTKD2": MTKD2
 }

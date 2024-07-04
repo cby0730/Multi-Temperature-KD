@@ -20,22 +20,26 @@ def main(cfg, resume, opts, args):
     seed_everything()
     experiment_name = cfg.EXPERIMENT.NAME
     if experiment_name == "":
-        if args.er == 1:
-            experiment_name = 'entropy,' + cfg.EXPERIMENT.TAG
-        else:
-            experiment_name = cfg.EXPERIMENT.TAG
-        if args.mt == 1:
-            experiment_name = 'mt,' + experiment_name
-        if args.dt == 1:
-            experiment_name = 'dt,' + experiment_name
-        if args.ct == 1:
-            experiment_name = 'ct,' + experiment_name
-        if args.bc == 1:
-            experiment_name = 'bc,' + experiment_name
-        if args.std == 1:
-            experiment_name = 'std,' + experiment_name
-        if args.t != 4:
-            experiment_name += ',t=' + str(args.t)
+        experiment_name = cfg.EXPERIMENT.TAG
+        
+    if args.er:
+        experiment_name = 'entropy,' + cfg.EXPERIMENT.TAG
+    if args.mt:
+        experiment_name = 'mt,' + experiment_name
+    if args.dt:
+        experiment_name = 'dt,' + experiment_name
+    if args.ct:
+        experiment_name = 'ct,' + experiment_name
+    if args.bc:
+        experiment_name = 'bc,' + experiment_name
+    if args.std:
+        experiment_name = 'std,' + experiment_name
+    if args.kl:
+        experiment_name = 'kl,' + experiment_name
+    if args.ls:
+        experiment_name = 'ls,' + experiment_name
+    if args.t != 4:
+        experiment_name += ',t=' + str(args.t)
 
     tags = cfg.EXPERIMENT.TAG.split(",")
     if opts:
@@ -55,7 +59,7 @@ def main(cfg, resume, opts, args):
     # cfg & loggers
     show_cfg(cfg)
     # init dataloader & models
-    if cfg.DISTILLER.TYPE in ['MLD', 'MLD2', 'MTKD2']:
+    if cfg.DISTILLER.TYPE in ['MLD', 'MTKD2']:
         train_loader, val_loader, num_data, num_classes = get_dataset_strong(cfg)
     else:
         train_loader, val_loader, num_data, num_classes = get_dataset(cfg)
@@ -136,13 +140,9 @@ def main(cfg, resume, opts, args):
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
                 model_student, model_teacher, cfg, args.t, args.er
             )
-        elif cfg.DISTILLER.TYPE == "MLD2":
-            distiller = distiller_dict[cfg.DISTILLER.TYPE](
-                model_student, model_teacher, cfg, args.t, args.er, args.std
-        )
         elif cfg.DISTILLER.TYPE == "MTKD2":
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
-                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt, args.ct, args.bc, args.std
+                model_student, model_teacher, cfg, args.t, args.er, args.mt, args.dt, args.ct, args.bc, args.std, args.kl, args.ls
         )
         elif cfg.DISTILLER.TYPE == "MTKD":
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
@@ -188,6 +188,8 @@ if __name__ == "__main__":
     parser.add_argument("--ct", action="store_true", help="Enable Contrastive KD")
     parser.add_argument("--bc", action="store_true", help="Enable batch and class contrastive")
     parser.add_argument("--std", action="store_true", help="Enable normalize")
+    parser.add_argument("--kl", action="store_true", help="Enable KL with target")
+    parser.add_argument("--ls", action="store_true", help="Enable label smoothing")
     parser.add_argument("opts", nargs=argparse.REMAINDER, help="Additional options")
 
     args = parser.parse_args()

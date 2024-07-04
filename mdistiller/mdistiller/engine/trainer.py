@@ -3,6 +3,7 @@ import time
 from tqdm import tqdm
 import torch
 import torch.nn as nn
+import torch.nn.utils as nn_utils
 import torch.optim as optim
 from collections import OrderedDict
 import getpass
@@ -18,6 +19,7 @@ from .utils import (
 )
 
 import time
+from .dot import DistillationOrientedTrainer
 
 class BaseTrainer(object):
     def __init__(self, experiment_name, distiller, train_loader, val_loader, cfg):
@@ -77,14 +79,22 @@ class BaseTrainer(object):
     def train(self, resume=False):
         epoch = 1
         if resume:
-            state = load_checkpoint(os.path.join(self.log_path, "latest"))
-            epoch = state["epoch"] + 1
-            self.distiller.load_state_dict(state["model"])
-            self.optimizer.load_state_dict(state["optimizer"])
-            self.best_acc = state["best_acc"]
+            try: # Load checkpoint if it exists. If not, start from epoch 1.
+                state = load_checkpoint(os.path.join(self.log_path, "latest"))
+                epoch = state["epoch"] + 1
+                self.distiller.load_state_dict(state["model"])
+                self.optimizer.load_state_dict(state["optimizer"])
+                self.best_acc = state["best_acc"]
+                print(log_msg("Resuming training from epoch {}".format(epoch), "INFO"))
+            except FileNotFoundError:
+                print(log_msg("No checkpoint found. Starting from epoch 1.", "INFO"))
+            except Exception as e:
+                print(log_msg("Error loading checkpoint: {}. Starting from epoch 1.".format(str(e)), "INFO"))
+
         while epoch < self.cfg.SOLVER.EPOCHS + 1:
             self.train_epoch(epoch)
             epoch += 1
+
         print(log_msg("Best accuracy:{}".format(self.best_acc), "EVAL"))
         with open(os.path.join(self.log_path, "worklog.txt"), "a") as writer:
             writer.write("best_acc\t" + "{:.2f}".format(float(self.best_acc)))
@@ -255,14 +265,75 @@ class AugTrainer(BaseTrainer):
         batch_size = image_weak.size(0)
         acc1, acc5 = accuracy(preds, target, topk=(1, 5))
         train_meters["losses"].update(loss.cpu().detach().numpy().mean(), batch_size)
+        train_meters["loss_kd"].update(losses_dict['loss_kd'].item(), batch_size)
         train_meters["top1"].update(acc1[0], batch_size)
         train_meters["top5"].update(acc5[0], batch_size)
         # print info
-        msg = "Epoch:{}| Time(data):{:.3f}| Time(train):{:.3f}| Loss:{:.4f}| Top-1:{:.3f}| Top-5:{:.3f}".format(
+        msg = "Epoch:{}| Time(data):{:.3f}| Time(train):{:.3f}| Loss:{:.4f}| Loss-KD:{:.4f}| Top-1:{:.3f}| Top-5:{:.3f}".format(
             epoch,
             train_meters["data_time"].avg,
             train_meters["training_time"].avg,
             train_meters["losses"].avg,
+            train_meters["loss_kd"].avg,
+            train_meters["top1"].avg,
+            train_meters["top5"].avg,
+        )
+        return msg
+    
+class AugDOTTrainer(BaseTrainer):
+    def init_optimizer(self, cfg):
+        if cfg.SOLVER.TYPE == "SGD":
+            m_task = cfg.SOLVER.MOMENTUM - cfg.SOLVER.DOT.DELTA
+            m_kd = cfg.SOLVER.MOMENTUM + cfg.SOLVER.DOT.DELTA
+            optimizer = DistillationOrientedTrainer(
+                self.distiller.module.get_learnable_parameters(),
+                lr=cfg.SOLVER.LR,
+                momentum=m_task,
+                momentum_kd=m_kd,
+                weight_decay=cfg.SOLVER.WEIGHT_DECAY,
+            )
+        else:
+            raise NotImplementedError(cfg.SOLVER.TYPE)
+        return optimizer
+    
+    def train_iter(self, data, epoch, train_meters):
+        #self.optimizer.zero_grad() # zero the grads
+        train_start_time = time.time()
+        image, target, index = data
+        train_meters["data_time"].update(time.time() - train_start_time)
+        image_weak, image_strong = image
+        image_weak, image_strong = image_weak.float(), image_strong.float()
+        image_weak, image_strong = image_weak.cuda(non_blocking=True), image_strong.cuda(non_blocking=True)
+        target = target.cuda(non_blocking=True)
+        index = index.cuda(non_blocking=True)
+
+        # forward
+        preds, losses_dict = self.distiller(image_weak=image_weak, image_strong=image_strong, target=target, epoch=epoch)
+
+        # dot backward
+        loss_ce, loss_kd = losses_dict['loss_ce'].mean(), losses_dict['loss_kd'].mean()
+        self.optimizer.zero_grad(set_to_none=True)
+        loss_kd.backward(retain_graph=True)
+        self.optimizer.step_kd()
+        self.optimizer.zero_grad(set_to_none=True)
+        loss_ce.backward()
+        self.optimizer.step()
+
+        train_meters["training_time"].update(time.time() - train_start_time)
+        # collect info
+        batch_size = image_weak.size(0)
+        acc1, acc5 = accuracy(preds, target, topk=(1, 5))
+        train_meters["losses"].update((loss_ce + loss_kd).cpu().detach().numpy().mean(), batch_size)
+        train_meters["loss_kd"].update(losses_dict['loss_kd'].item(), batch_size)
+        train_meters["top1"].update(acc1[0], batch_size)
+        train_meters["top5"].update(acc5[0], batch_size)
+        # print info
+        msg = "Epoch:{}| Time(data):{:.3f}| Time(train):{:.3f}| Loss:{:.4f}| Loss-KD:{:.4f}| Top-1:{:.3f}| Top-5:{:.3f}".format(
+            epoch,
+            train_meters["data_time"].avg,
+            train_meters["training_time"].avg,
+            train_meters["losses"].avg,
+            train_meters["loss_kd"].avg,
             train_meters["top1"].avg,
             train_meters["top5"].avg,
         )

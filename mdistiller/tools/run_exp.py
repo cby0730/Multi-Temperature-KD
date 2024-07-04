@@ -5,20 +5,58 @@ import multiprocessing
 from multiprocessing import Queue, Process
 import os
 
+server_name = "aivc04"
 
 # 定義你的 YAML 檔案
-yaml_files = [
-    'configs/cifar100/mtkd2/res32x4_res8x4.yaml', 
-    'configs/cifar100/mtkd2/res32x4_shuv2.yaml',
-    'configs/cifar100/mtkd2/res50_mv2.yaml',
-    'configs/cifar100/mtkd2/vgg13_mv2.yaml',
-    'configs/cifar100/mtkd2/vgg13_vgg8.yaml',
-    'configs/cifar100/mtkd2/wrn40_2_wrn_16_2.yaml',
-    'configs/cifar100/mtkd2/wrn40_2_wrn_40_1.yaml'
+mtkd_yaml_files = [
+    f'configs/cifar100/{server_name}/mtkd/res32x4_res8x4.yaml', 
+    f'configs/cifar100/{server_name}/mtkd/res32x4_shuv2.yaml',
+    f'configs/cifar100/{server_name}/mtkd/res50_mv2.yaml',
+    f'configs/cifar100/{server_name}/mtkd/vgg13_mv2.yaml',
+    f'configs/cifar100/{server_name}/mtkd/vgg13_vgg8.yaml',
+    f'configs/cifar100/{server_name}/mtkd/wrn40_2_wrn_16_2.yaml',
+    f'configs/cifar100/{server_name}/mtkd/wrn40_2_wrn_40_1.yaml'
+]
+mtkd_dot_yaml_files = [
+    f'configs/cifar100/{server_name}/mtkd_dot/res32x4_res8x4.yaml',
+    f'configs/cifar100/{server_name}/mtkd_dot/res32x4_shuv2.yaml',
+    f'configs/cifar100/{server_name}/mtkd_dot/res50_mv2.yaml',
+    f'configs/cifar100/{server_name}/mtkd_dot/vgg13_mv2.yaml',
+    f'configs/cifar100/{server_name}/mtkd_dot/vgg13_vgg8.yaml',
+    f'configs/cifar100/{server_name}/mtkd_dot/wrn40_2_wrn_16_2.yaml',
+    f'configs/cifar100/{server_name}/mtkd_dot/wrn40_2_wrn_40_1.yaml'
+]
+dkd_yaml_files = [
+    f'configs/cifar100/{server_name}/dkd/res32x4_res8x4.yaml', 
+    f'configs/cifar100/{server_name}/dkd/res32x4_shuv2.yaml',
+    f'configs/cifar100/{server_name}/dkd/res50_mv2.yaml',
+    f'configs/cifar100/{server_name}/dkd/vgg13_mv2.yaml',
+    f'configs/cifar100/{server_name}/dkd/vgg13_vgg8.yaml',
+    f'configs/cifar100/{server_name}/dkd/wrn40_2_wrn_16_2.yaml',
+    f'configs/cifar100/{server_name}/dkd/wrn40_2_wrn_40_1.yaml'
+]
+mld_yaml_files = [
+    f'configs/cifar100/{server_name}/mld/res32x4_res8x4.yaml', 
+    f'configs/cifar100/{server_name}/mld/res32x4_shuv2.yaml',
+    f'configs/cifar100/{server_name}/mld/res50_mv2.yaml',
+    f'configs/cifar100/{server_name}/mld/vgg13_mv2.yaml',
+    f'configs/cifar100/{server_name}/mld/vgg13_vgg8.yaml',
+    f'configs/cifar100/{server_name}/mld/wrn40_2_wrn_16_2.yaml',
+    f'configs/cifar100/{server_name}/mld/wrn40_2_wrn_40_1.yaml'
+]
+kd_yaml_files = [
+    f'configs/cifar100/{server_name}/kd/res32x4_res8x4.yaml', 
+    f'configs/cifar100/{server_name}/kd/res32x4_shuv2.yaml',
+    f'configs/cifar100/{server_name}/kd/res50_mv2.yaml',
+    f'configs/cifar100/{server_name}/kd/vgg13_mv2.yaml',
+    f'configs/cifar100/{server_name}/kd/vgg13_vgg8.yaml',
+    f'configs/cifar100/{server_name}/kd/wrn40_2_wrn_16_2.yaml',
+    f'configs/cifar100/{server_name}/kd/wrn40_2_wrn_40_1.yaml'
 ]
 
 # 定義你的參數
-params = []
+params = ['--er']
+mtkd_params = []
 
 # 執行指令的函數
 def run_command(command):
@@ -33,12 +71,36 @@ combinations = []
 for i in range(len(params) + 1):
     combinations += list(itertools.combinations(params, i))
 
+mtkd_combinations = []
+for i in range(len(mtkd_params) + 1):
+    mtkd_combinations += list(itertools.combinations(mtkd_params, i))
+
 # 建立所有可能的指令
 all_commands = []
-for yaml_file in yaml_files:
-    for combination in combinations:
-        command = ['pipenv', 'run', 'python3', 'tools/train.py', '--cfg', yaml_file, '--er', '--mt', '--dt'] + list(combination)
+for yaml_file in mtkd_yaml_files:
+    for combination in mtkd_combinations:
+        command = ['pipenv', 'run', 'python3', 'tools/train.py', '--cfg', yaml_file, '--er', '--mt', '--kl', '--bc'] + list(combination)
         all_commands.append(command)
+
+'''for yaml_file in mtkd_dot_yaml_files:
+    for combination in mtkd_combinations:
+        command = ['pipenv', 'run', 'python3', 'tools/train.py', '--cfg', yaml_file, '--er', '--mt', '--kl', '--bc'] + list(combination)
+        all_commands.append(command)'''
+
+'''for yaml_file in dkd_yaml_files:
+    for combination in combinations:
+        command = ['pipenv', 'run', 'python3', 'tools/train.py', '--cfg', yaml_file] + list(combination)
+        all_commands.append(command)
+
+for yaml_file in mld_yaml_files:
+    for combination in combinations:
+        command = ['pipenv', 'run', 'python3', 'tools/train.py', '--cfg', yaml_file] + list(combination)
+        all_commands.append(command)
+
+for yaml_file in kd_yaml_files:
+    for combination in combinations:
+        command = ['pipenv', 'run', 'python3', 'tools/train.py', '--cfg', yaml_file] + list(combination)
+        all_commands.append(command)'''
 
 # 隨機打亂指令順序
 #random.shuffle(all_commands)
@@ -87,5 +149,5 @@ def execute_commands(commands, num_parallel):
     print(f"All {total} commands have been executed.")
 
 if __name__ == '__main__':
-    num_commands_to_execute = 3  # 你可以根據需要調整這個數字
+    num_commands_to_execute = 7  # 你可以根據需要調整這個數字
     execute_commands(all_commands, num_commands_to_execute)
